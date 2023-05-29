@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+black . --diff
+isort . --check-only --diff
+flake8 .
+mypy .

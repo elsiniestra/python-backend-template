@@ -1,0 +1,69 @@
+version: "3.6"
+
+services:
+  app:
+    platform: linux/amd64
+    image: ghcr.io/{{capitalistelite}}/{{python-backend-template}}:dev-latest  # TODO: cookiecutter
+    depends_on:
+      - redis-stack
+      - postgres
+    ports:
+      - 8000:8000
+    env_file:
+      - ../.env
+    networks:
+      - network-bridge
+      - getaway_traefik
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.catalan_chess_backend.rule=Host(`${APP_HOST?Variable not set}`) || Host(`www.${APP_HOST?Variable not set}`)
+      - traefik.http.routers.catalan_chess_backend.entrypoints=secureweb
+      - traefik.http.routers.catalan_chess_backend.tls.certresolver=myresolver
+      - traefik.http.services.catalan_chess_backend.loadbalancer.server.port=8000
+      - traefik.docker.network=getaway_traefik
+
+  celery:
+    command: python -m celery -A src.core.celery_app worker -l INFO
+    image: ghcr.io/{{capitalistelite}}/{{python-backend-template}}:v${APP_VERSION}  # TODO: cookiecutter
+    depends_on:
+      - redis-stack
+    env_file:
+      - ../.env
+    environment:
+      - POSTGRES_HOST=postgres
+    networks:
+      - network-bridge
+
+  postgres:
+    image: postgres:15-alpine
+    hostname: postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    env_file:
+      - ../.env
+    volumes:
+      - "pg-data:/var/lib/postgresql/data"
+    networks:
+      - network-bridge
+
+  redis-stack:
+    image: "redis/redis-stack:latest"
+    volumes:
+      - redis-data:/var/lib/redis
+      - ./redis/redis.conf:/etc/redis/redis.conf
+    networks:
+      - network-bridge
+    ports:
+      - "8192:8001"
+
+networks:
+  network-bridge:
+  getaway_traefik:
+    external: true
+    
+volumes:
+  pg-data:
+  redis-data:

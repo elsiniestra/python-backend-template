@@ -1,0 +1,94 @@
+version: "3.6"
+
+services:
+  app:
+    platform: linux/amd64
+    build:
+      context: ../
+      dockerfile: ./deployment/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis-stack
+      - traefik
+      - postgres
+    env_file:
+      - ../.env
+    environment:
+      - POSTGRES_HOST=postgres
+    networks:
+      - network-bridge
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${APP_NAME?Variable not set}.entrypoints=https
+      - traefik.http.routers.${APP_NAME?Variable not set}=true
+      - traefik.http.routers.${APP_NAME?Variable not set}.tls=true
+      - traefik.http.routers.${APP_NAME?Variable not set}.rule=Host(`${APP_HOST?Variable not set}.docker.local`) || Host(`www.${APP_HOST?Variable not set}.docker.local`)
+      - traefik.http.services.${APP_NAME?Variable not set}-service.loadbalancer.server.port=8000
+
+  celery:
+    command: python -m celery -A src.core.celery_app worker -l INFO
+    build:
+      context: ../
+      dockerfile: ./deployment/Dockerfile
+    depends_on:
+      - redis-stack
+    env_file:
+      - ../.env
+    environment:
+      - POSTGRES_HOST=postgres
+    networks:
+      - network-bridge
+
+  postgres:
+    image: postgres:15-alpine
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    env_file:
+      - ../.env
+    volumes:
+      - "pg-data:/var/lib/postgresql/data"
+    networks:
+      - network-bridge
+
+  traefik:
+    image: "traefik:v2.9.5"
+    container_name: "traefik"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # The Traefik Web UI port (enabled by api:insecure: true in traefik.yml)
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/config.yml:/etc/traefik/config.yml:ro
+      - ./certs:/etc/certs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/logs:/logs
+    networks:
+      - network-bridge
+
+  redis-stack:
+    image: "redis/redis-stack:latest"
+    ports:
+      - "6379:6379"
+      - "8001:8001"
+    volumes:
+      - redis-data:/var/lib/redis
+      - ./redis/redis.conf:/etc/redis/redis.conf
+    networks:
+      - network-bridge
+
+networks:
+  network-bridge:
+
+volumes:
+  pg-data:
+  redis-data:

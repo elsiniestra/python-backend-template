@@ -1,0 +1,31 @@
+[flake8]
+ignore =
+    # W503: line break before binary operator (ex. `"foo" \n +`)
+    # W503 contradicts W504, see https://stackoverflow.com/questions/57074300
+    W503,
+    # E203: whitespace before ':' (ex. `foo: int`)
+    # https://github.com/psf/black/issues/315
+    E203,
+per-file-ignores =
+    # F401: imported but unused (ex. `from foo import *`)
+    # F403: unable to detect undefined names (ex. `from foo import *`)
+    __init__.py:F401,F403
+select =
+    # C: McCabe complexity of code units
+    C,
+    # E: pycodestyle errors
+    E,
+    # F: pyflakes errors
+    F,
+    # W: pycodestyle warnings
+    W
+# Set McCabe max code complexity
+max-complexity = 21
+# Set line length
+max-line-length = 120
+line-length = 120
+exclude =
+    # Virtualenv
+    ./.venv
+    # File used to manually test new changes / experiment
+    ./experiment.py
