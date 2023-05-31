@@ -2,8 +2,10 @@
 
 # Features
 - ✨REST API project inspired by Clean Architecture
+- ✨The project based on FastAPI, Pydantic, Postgres/SA 2.0, RedisStack, Celery 
+- ✨Fully asynchronous application (almost)
 - ✨JWT authentication and role-based access using graph-based IAM
-- ✨S3 integration
+- ✨S3 and Sentry integrations
 - ✨Fully covered by flake8, mypy, blake, and isort
 - ✨Dev environment using docker-compose and traefik (including SSL certificates generation) 
 - ✨CI workflow on Github Actions including linting and image building
