@@ -31,3 +31,6 @@ __pycache__
 
 # Poetry
 /requirements.txt
+
+# Macos
+.DS_Store
