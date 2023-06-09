@@ -20,7 +20,7 @@ alembic = "^1.9.2"
 python-dateutil = "^2.8.2"
 
 # S3
-boto3 = "^1.26.128"
+boto3 = "^1.26.150"
 
 # Security
 passlib = {extras = ['bcrypt'], version = '^1.7.4'}
