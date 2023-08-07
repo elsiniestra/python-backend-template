@@ -16,7 +16,7 @@ uvicorn = { extras = ["standard"], version = "^0.20.0" }
 # Database
 SQLAlchemy = {extras = ["mypy"], version = "^2.0.12"}
 asyncpg = "^0.27.0"
-alembic = "^1.9.2"
+alembic = "^1.11.2"
 python-dateutil = "^2.8.2"
 
 # S3
