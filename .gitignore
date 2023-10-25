@@ -1,0 +1,36 @@
+# Virtualenv
+/.venv
+/venv
+
+# Sensitive
+/.env
+
+# IDE Related
+/.idea
+/.vscode
+
+# Temporary Files
+__pycache__
+
+# Mypy
+/.mypy_cache
+/requirements.txt
+
+# Development
+/openapi.json
+/experiment.py
+
+# Translations
+*.mo
+*.pot
+
+
+# Local SSL
+/deployment/certs
+/deployment/traefik/logs/*.log
+
+# Poetry
+/requirements.txt
+
+# Macos
+.DS_Store

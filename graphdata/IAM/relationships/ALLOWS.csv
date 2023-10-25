@@ -1,0 +1,9 @@
+src,dest,access
+superadmin,admin_users,read
+superadmin,admin_users,write
+superadmin,admin_posts,read
+superadmin,admin_posts,write
+superadmin,admin_stats,read
+superadmin,admin_stats,write
+editor,admin_posts,read
+editor,admin_posts,write
