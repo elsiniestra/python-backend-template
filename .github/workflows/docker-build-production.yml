@@ -25,7 +25,7 @@ jobs:
 
       - name: Lowercase repository name
         id: repo
-        uses: ASzc/change-string-case-action@v1
+        uses: ASzc/change-string-case-action@v6
         with:
           string: ${{ github.repository }}
 
