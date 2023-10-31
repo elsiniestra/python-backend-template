@@ -8,7 +8,7 @@ authors = ["Artem Hrytsenko"]
 python = "^3.11"
 
 # FastAPI
-fastapi = "^0.101.0"
+fastapi = "^0.104.1"
 pydantic = "^2.1.1"
 python-multipart = "^0.0.5"
 uvicorn = { extras = ["standard"], version = "^0.23.2" }
