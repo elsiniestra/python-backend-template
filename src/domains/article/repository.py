@@ -11,50 +11,31 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.dialects.postgresql import aggregate_order_by, array_agg
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import coalesce
 
-from src.domains.base.repository import BaseAsyncCrudRepository
+from src.core.base.repository import BaseAsyncDBRepository
 from src.lib import enums, errors, models, pagination, schemas
 
 
-class ArticleDBRepository(
-    BaseAsyncCrudRepository[
-        models.Article,
-        schemas.Article,
-        schemas.ArticlesWithCount,
-        schemas.ArticleCreate,
-        schemas.ArticleCreate,
-    ]
-):
-    @classmethod
-    def create_instance(cls, session_manager: async_sessionmaker[AsyncSession]) -> "ArticleDBRepository":
-        return cls(
-            session_manager=session_manager,
-            db_model=models.Article,
-            pydantic_model=schemas.Article,
-            pydantic_model_with_count=schemas.ArticlesWithCount,
-            pydantic_create_model=schemas.ArticleCreate,
-            pydantic_update_model=schemas.ArticleCreate,
-        )
-
+class ArticleDBRepository(BaseAsyncDBRepository):
     async def get(self, *, session: AsyncSession, slug: str, language: enums.LanguageType) -> schemas.Article:
         query = (
             self._get_query(language=language)
             .add_columns(
-                self.db_model.label,
-                self.db_model.preview_image,
-                self.db_model.content,
-                self.db_model.created_at,
-                self.db_model.updated_at,
-                self.db_model.language,
+                models.Article.label,
+                models.Article.preview_image,
+                models.Article.content,
+                models.Article.created_at,
+                models.Article.updated_at,
+                models.Article.language,
             )
-            .where(and_(self.db_model.slug == slug, self.db_model.is_draft == False))  # noqa: E712
+            .where(and_(models.Article.slug == slug, models.Article.is_draft == False))  # noqa: E712
         )
         result = (await session.execute(query)).mappings().first()
         if result is None:
             raise errors.ArticleNotFoundError()
-        return self.pydantic_model(**result)
+        return schemas.Article(**result)
 
     async def get_admin(
         self, *, session: AsyncSession, slug: str, language: enums.LanguageType
@@ -62,17 +43,17 @@ class ArticleDBRepository(
         query = (
             self._get_query(language=language)
             .add_columns(
-                self.db_model.label,
-                self.db_model.preview_image,
-                self.db_model.content,
-                self.db_model.created_at,
-                self.db_model.updated_at,
-                self.db_model.language,
-                self.db_model.generic_id,
-                self.db_model.is_main,
-                self.db_model.is_draft,
+                models.Article.label,
+                models.Article.preview_image,
+                models.Article.content,
+                models.Article.created_at,
+                models.Article.updated_at,
+                models.Article.language,
+                models.Article.generic_id,
+                models.Article.is_main,
+                models.Article.is_draft,
             )
-            .where(self.db_model.slug == slug)
+            .where(models.Article.slug == slug)
         )
         result = (await session.execute(query)).mappings().first()
         if result is None:
@@ -82,7 +63,7 @@ class ArticleDBRepository(
     async def create(self, *, session: AsyncSession, item: schemas.ArticleCreate) -> schemas.ArticleCreateResponse:
         params = item.model_dump()
         tags = params.pop("tags")
-        result = self.db_model(**params)
+        result = models.Article(**params)
         session.add(result)
         await session.flush()
         for tag in tags:
@@ -105,22 +86,22 @@ class ArticleDBRepository(
         if not is_main and not pagination_body:
             raise errors.InvalidArticleListQueryError()
 
-        query = self._get_query(language=language).where(self.db_model.is_draft == False)  # noqa: E712
+        query = self._get_query(language=language).where(models.Article.is_draft == False)  # noqa: E712
 
         if pagination_body:
-            query = pagination.add_pagination_to_query(query=query, id_column=self.db_model.id, body=pagination_body)
+            query = pagination.add_pagination_to_query(query=query, id_column=models.Article.id, body=pagination_body)
         if is_main:
-            query = query.where(self.db_model.is_main == True).limit(4).order_by(self.db_model.created_at)  # noqa: E712
+            query = query.where(models.Article.is_main == True).limit(4).order_by(models.Article.created_at)  # noqa: E712
 
         result = await session.execute(query)
         items = result.mappings().all()
 
-        query = select(func.count(distinct(self.db_model.generic_id))).where(
-            and_(self.db_model.language == language, self.db_model.is_draft == False)  # noqa: E712
+        query = select(func.count(distinct(models.Article.generic_id))).where(
+            and_(models.Article.language == language, models.Article.is_draft == False)  # noqa: E712
         )
 
         total_count = (await session.execute(query)).scalar()
-        return self.pydantic_model_with_count(items=items, count=total_count)
+        return schemas.ArticlesWithCount(items=items, count=total_count)
 
     async def get_all_admin(
         self,
@@ -132,14 +113,14 @@ class ArticleDBRepository(
         if not pagination_body:
             raise errors.InvalidArticleListQueryError()
 
-        query = self._get_query(language=language).add_columns(self.db_model.is_draft, self.db_model.is_main)
+        query = self._get_query(language=language).add_columns(models.Article.is_draft, models.Article.is_main)
         if pagination_body:
-            query = pagination.add_pagination_to_query(query=query, id_column=self.db_model.id, body=pagination_body)
+            query = pagination.add_pagination_to_query(query=query, id_column=models.Article.id, body=pagination_body)
 
         result = await session.execute(query)
         items = result.mappings().all()
 
-        query = select(func.count(distinct(self.db_model.generic_id))).where(and_(self.db_model.language == language))
+        query = select(func.count(distinct(models.Article.generic_id))).where(and_(models.Article.language == language))
 
         total_count = (await session.execute(query)).scalar()
         return schemas.ArticlesEditorWithCount(items=items, count=total_count)
@@ -152,7 +133,7 @@ class ArticleDBRepository(
         article_id = (
             (
                 await session.execute(
-                    update(self.db_model).where(self.db_model.slug == slug).values(**body).returning(self.db_model.id)
+                    update(models.Article).where(models.Article.slug == slug).values(**body).returning(models.Article.id)
                 )
             )
             .scalars()
@@ -188,7 +169,7 @@ class ArticleDBRepository(
         return await self.get_admin(session=session, slug=slug, language=language)
 
     async def delete(self, *, session: AsyncSession, slug: str) -> bool:
-        await session.execute(delete(self.db_model).where(self.db_model.slug == slug))
+        await session.execute(delete(models.Article).where(models.Article.slug == slug))
         return True
 
     async def like(
@@ -199,7 +180,7 @@ class ArticleDBRepository(
         is_positive: bool = True,
         user_id: int,
     ) -> bool:
-        article_query = select(self.db_model).where(self.db_model.slug == slug)
+        article_query = select(models.Article).where(models.Article.slug == slug)
         article = (await session.execute(article_query)).scalar()
         if article is None:
             raise errors.ArticleNotFoundError()
@@ -232,7 +213,7 @@ class ArticleDBRepository(
         slug: str,
         user_id: int,
     ) -> bool:
-        article_query = select(self.db_model).where(self.db_model.slug == slug)
+        article_query = select(models.Article).where(models.Article.slug == slug)
         article = (await session.execute(article_query)).scalar()
         if article is None:
             raise errors.ArticleNotFoundError()
@@ -313,7 +294,7 @@ class ArticleDBRepository(
                 ).label("likes"),
             )
             .select_from(
-                self.db_model.__table__.join(
+                models.Article.__table__.join(
                     models.User.__table__,
                     models.Comment.author_id == models.User.id,
                 ).join(models.CommentLike.__table__, models.CommentLike.comment_id == models.Comment.id, isouter=True)
@@ -430,16 +411,16 @@ class ArticleDBRepository(
         return True
 
     def _get_query(self, language: str) -> GenerativeSelect:
-        generic_articles = self.db_model.__table__.alias("generic_articles")
+        generic_articles = models.Article.__table__.alias("generic_articles")
 
         return (
             select(
-                self.db_model.id,
-                self.db_model.slug,
-                self.db_model.title,
-                self.db_model.subtitle,
-                self.db_model.created_at,
-                self.db_model.cover_image,
+                models.Article.id,
+                models.Article.slug,
+                models.Article.title,
+                models.Article.subtitle,
+                models.Article.created_at,
+                models.Article.cover_image,
                 models.User.full_name.label("author"),
                 func.array_remove(array_agg(aggregate_order_by(models.Tag.name, models.Tag.name.desc())), None).label(
                     "tags"
@@ -456,11 +437,11 @@ class ArticleDBRepository(
                 ).label("likes"),
             )
             .select_from(
-                self.db_model.__table__.join(
+                models.Article.__table__.join(
                     models.ArticlesToTags.__table__.join(
                         models.Tag, models.ArticlesToTags.__table__.c.tag_id == models.Tag.id
                     ),
-                    self.db_model.id == models.ArticlesToTags.__table__.c.article_id,
+                    models.Article.id == models.ArticlesToTags.__table__.c.article_id,
                     isouter=True,
                 )
                 .join(
@@ -471,12 +452,12 @@ class ArticleDBRepository(
                     ),
                     isouter=True,
                 )
-                .join(models.User, models.User.id == self.db_model.author_id)
-                .join(models.ArticleLike.__table__, models.ArticleLike.article_id == self.db_model.id, isouter=True)
+                .join(models.User, models.User.id == models.Article.author_id)
+                .join(models.ArticleLike.__table__, models.ArticleLike.article_id == models.Article.id, isouter=True)
             )
-            .where(self.db_model.language == language)
+            .where(models.Article.language == language)
             .group_by(
-                self.db_model.id,
+                models.Article.id,
                 models.User.first_name,
                 models.User.last_name,
                 generic_articles.c.language,

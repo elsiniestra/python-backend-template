@@ -23,7 +23,7 @@ def create_user_domain(
     iam_graph_name: str,
     pwd_context: CryptContext,
 ) -> UserDomain:
-    db_repo = UserDBRepository.create_instance(session_manager=pg_session_manager)
+    db_repo = UserDBRepository(session_manager=pg_session_manager)
     graph_repo = UserGraphRepository.create_instance(connection_pool=redis_connection_pool, graph_name=iam_graph_name)
     oauth_service = JWTService(pwd_context=pwd_context)
     controller = UserController(db_repo=db_repo, graph_repo=graph_repo, oauth_service=oauth_service)

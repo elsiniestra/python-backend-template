@@ -1,31 +1,23 @@
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.domains.base.repository import BaseAsyncCrudRepository
+from src.core.base.repository import BaseAsyncDBRepository
 from src.lib import errors, models, pagination, schemas
 
 
-class UserDBRepository(
-    BaseAsyncCrudRepository[
-        models.User,
-        schemas.User,
-        schemas.UsersWithCount,
-        schemas.InnerUserCreate,
-        schemas.UserUpdate,
-    ]
-):
+class UserDBRepository(BaseAsyncDBRepository):
     async def get(self, *, session: AsyncSession, item_id: int) -> schemas.User:
         query = select(
-            self.db_model.id,
-            self.db_model.email,
-            self.db_model.username,
-            self.db_model.first_name,
-            self.db_model.last_name,
-        ).where(self.db_model.id == item_id)
+            models.User.id,
+            models.User.email,
+            models.User.username,
+            models.User.first_name,
+            models.User.last_name,
+        ).where(models.User.id == item_id)
         result = (await session.execute(query)).mappings().first()
         if result is None:
             raise errors.UserNotFoundError()
-        return self.pydantic_model(**result)
+        return schemas.User(**result)
 
     async def get_all(
         self,
@@ -34,21 +26,43 @@ class UserDBRepository(
         pagination_body: schemas.PaginationBody,
     ) -> schemas.UsersWithCount:
         paginated_query = pagination.add_pagination_to_query(
-            query=select(self.db_model.__table__), id_column=self.db_model.id, body=pagination_body
+            query=select(models.User.__table__), id_column=models.User.id, body=pagination_body
         )
         result = await session.execute(paginated_query)
         items = result.mappings().all()
-        total_count = await self._get_rows_count_in(session=session, table=self.db_model)
+        total_count = await self._get_rows_count_in(session=session, table=models.User)
 
-        return self.pydantic_model_with_count(items=items, count=total_count)
+        return schemas.UsersWithCount(items=items, count=total_count)
 
-    @classmethod
-    def create_instance(cls, session_manager: async_sessionmaker[AsyncSession]) -> "UserDBRepository":
-        return cls(
-            session_manager=session_manager,
-            db_model=models.User,
-            pydantic_model=schemas.User,
-            pydantic_model_with_count=schemas.UsersWithCount,
-            pydantic_create_model=schemas.InnerUserCreate,
-            pydantic_update_model=schemas.UserUpdate,
-        )
+    async def create(self, *, session: AsyncSession, item: schemas.UserCreate) -> schemas.User:
+        result = models.User(**item.model_dump())
+        session.add(result)
+        await session.flush()
+        return await self.get(session=session, item_id=result.id)
+
+    async def update(
+        self, *, session: AsyncSession, item: schemas.UserUpdate, item_id: int
+) -> schemas.UserUpdate:
+        body = item.model_dump(exclude_unset=True)
+        if body == {}:
+            raise errors.UnprocessableEntityError()
+        result = await self.get(session=session, item_id=item_id)
+        if result is None:
+            raise errors.NotFoundError()
+        await session.execute(update(models.User).where(models.User.id == item_id).values(**body))
+        return await self.get(session=session, item_id=item_id)
+
+    @staticmethod
+    async def delete(*, session: AsyncSession, item_id: int) -> bool:
+        result = await session.get(models.User, item_id)
+        if result is None:
+            raise errors.NotFoundError()
+        await session.delete(result)
+        return True
+
+    @staticmethod
+    async def _get_rows_count_in(*, session: AsyncSession) -> int:
+        res = (await session.execute(func.count(models.User.id))).scalar()
+        if not isinstance(res, int):
+            raise errors.UnprocessableEntityError(detail="Count query returned non-int value")
+        return res

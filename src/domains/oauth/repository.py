@@ -5,7 +5,7 @@ from redis.asyncio.client import Pipeline as RedisPipeline
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.domains.base.repository import (
+from src.core.base.repository import (
     BaseAsyncDBRepository,
     BaseRedisRepository,
 )

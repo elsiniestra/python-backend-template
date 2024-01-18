@@ -1,4 +1,3 @@
-import abc
 import io
 import uuid
 from typing import Literal
@@ -11,24 +10,13 @@ from slugify import slugify
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import Headers
 
-from src.domains.base.controller import BaseAsyncDBCrudController
-from src.lib import errors, models, pagination, providers, schemas, utils
+from src.lib import errors, pagination, providers, schemas, utils
 
 from .repository import ArticleDBRepository
 
 
 # TODO: split into smaller parts
-class ArticleController(
-    BaseAsyncDBCrudController[
-        ArticleDBRepository,
-        models.Article,
-        schemas.Article,
-        schemas.ArticlesPaginated,
-        schemas.ArticleCreate,
-        schemas.ArticleCreate,
-    ],
-    abc.ABC,
-):
+class ArticleController:
     def __init__(self, db_repo: ArticleDBRepository) -> None:
         self._db_repo = db_repo
 

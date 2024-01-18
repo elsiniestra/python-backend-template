@@ -2,7 +2,7 @@ from typing import Any, Literal
 
 from redis import asyncio as aioredis
 
-from src.domains.base.repository import BaseGraphRepository
+from src.core.base.repository import BaseGraphRepository
 from src.lib.enums import IAMAccess, IAMScope, IAMUserGroup
 
 

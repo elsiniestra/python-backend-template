@@ -5,11 +5,10 @@ from jose import jwt as jose_jwt
 from passlib.context import CryptContext
 from pydantic import ValidationError
 
-from src.domains.base.service import BaseService
 from src.lib import errors, schemas
 
 
-class JWTService(BaseService):
+class JWTService:
     def __init__(self, pwd_context: CryptContext) -> None:
         super().__init__()
         self.pwd_context = pwd_context
