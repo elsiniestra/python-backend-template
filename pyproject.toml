@@ -40,7 +40,7 @@ pydantic-settings = "^2.0.2"
 beautifulsoup4 = "^4.12.2"
 cloudscraper = "^1.2.71"
 aiofiles = "^23.2.1"
-fastapi-sso = "^0.7.2"
+fastapi-sso = "^0.12.1"
 imgkit = "^1.2.3"
 
 [tool.poetry.dev-dependencies]
